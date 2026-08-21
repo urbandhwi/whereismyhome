@@ -66,6 +66,13 @@ def load_data(base_url):
         geojson_gu = geojson_gu.to_crs(epsg=4326) # CRS 통일
         st.success(f"자치구 경계 데이터 로드 완료: {gu_url}")
 
+        # GeoJSON 파일 로드 (지하철 노선) - NEW
+        encoded_subway_filename = urllib.parse.quote('서울_지하철_종합.geojson')
+        subway_url = base_url + encoded_subway_filename
+        geojson_subway = gpd.read_file(subway_url)
+        geojson_subway = geojson_subway.to_crs(epsg=4326)
+        st.success(f"지하철 노선 데이터 로드 완료: {subway_url}")
+
         # `seoul_dong.geojson`에는 '법정동코드'가 문자열로 저장되어 있습니다. (Cell zjRgA_OzBjYC 참고)
         # plotly.express의 featureidkey가 `feature.properties.법정동코드`를 사용하려면
         # geojson_dong의 '법정동코드' 컬럼이 있어야 합니다.
@@ -92,14 +99,14 @@ def load_data(base_url):
         else:
             st.warning("geojson_dong에 '자치구코드' 또는 '법정동코드' 컬럼이 없어 unique_map_key를 생성할 수 없습니다.")
 
-        return df, geojson_dong, geojson_grid, geojson_gu # Return geojson_gu
+        return df, geojson_dong, geojson_grid, geojson_gu, geojson_subway # Return geojson_subway
     except Exception as e:
         st.error(f"데이터 로드 중 오류 발생: {e}")
         st.info("GitHub URL 또는 파일 경로를 확인하거나, 파일이 public repository에 있는지 확인 바랍니다.")
-        return None, None, None, None
+        return None, None, None, None, None
 
 try:
-    df_raw, geojson_dong, geojson_grid, geojson_gu = load_data(github_base_url)
+    df_raw, geojson_dong, geojson_grid, geojson_gu, geojson_subway = load_data(github_base_url)
 except Exception as e:
     st.error(f"데이터 파일 로드 중 오류가 발생했습니다: {e}")
     st.stop()
@@ -214,8 +221,8 @@ if submit_button:
             # Drop the redundant SIG_CD column from the merge
             plot_gdf.drop(columns=['SIG_CD'], inplace=True, errors='ignore')
 
-            hover_fields = ['EMD_NM', 'SIG_KOR_NM', 'count_거래건수', 'min_환산임대료', 'max_환산임대료', 'median_환산임대료', 'avg_환산임대료']
-            hover_aliases = ['법정동명:', '자치구:', '거래건수:', '최저 환산임대료(만원):', '최고 환산임대료(만원):', '중앙 환산임대료(만원):', '평균 환산임대료(만원):']
+            hover_fields = ['EMD_NM', 'count_거래건수', 'min_환산임대료', 'max_환산임대료', 'median_환산임대료', 'avg_환산임대료']
+            hover_aliases = ['법정동명:', '거래건수:', '최저 환산임대료(만원):', '최고 환산임대료(만원):', '중앙 환산임대료(만원):', '평균 환산임대료(만원):']
         else: # 격자별
             hover_fields = ['grid_id', 'count_거래건수', 'min_환산임대료', 'max_환산임대료', 'median_환산임대료', 'avg_환산임대료']
             hover_aliases = ['격자 ID:', '거래건수:', '최저 환산임대료(만원):', '최고 환산임대료(만원):', '중앙 환산임대료(만원):', '평균 환산임대료(만원):']
@@ -230,7 +237,7 @@ if submit_button:
         # Folium Choropleth 레이어 추가
         # avg_환산임대료가 NaN이 아닌 데이터만 시각화
         folium.Choropleth(
-            geo_data=plot_gdf.dropna(subset=['avg_환산임대료']), # GeoDataFrame directly
+            geo_data=plot_gdf.dropna(subset=['avg_환산임대료']),
             name=f'{spatial_unit} 평균 환산월세',
             data=plot_gdf.dropna(subset=['avg_환산임대료']),
             columns=[group_col, 'avg_환산임대료'], # Key column and value column
@@ -277,6 +284,23 @@ if submit_button:
                     html=f"<div style=\"font-size: 10pt; color: gray; opacity: 0.7; text-align: center; font-weight: bold;\">{row['SIG_KOR_NM']}</div>"
                 )
             ).add_to(m)
+
+        # 지하철 노선 레이어 추가 (NEW)
+        folium.GeoJson(
+            geojson_subway,
+            name='서울 지하철 노선',
+            style_function=lambda x: {
+                'color': '#8B008B', # Purple color for subway lines
+                'weight': 2,
+                'opacity': 0.7
+            },
+            tooltip=folium.features.GeoJsonTooltip(
+                fields=['LINE_NUM'], # Assuming 'LINE_NUM' is the column with subway line numbers
+                aliases=['호선:'],
+                localize=True,
+                sticky=True
+            )
+        ).add_to(m)
 
         folium.LayerControl().add_to(m)
 
