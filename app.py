@@ -67,7 +67,7 @@ def load_data(base_url):
         st.success(f"자치구 경계 데이터 로드 완료: {gu_url}")
 
         # GeoJSON 파일 로드 (지하철 노선) - NEW
-        encoded_subway_filename = urllib.parse.quote('서울_지하철_종합.geojson')
+        encoded_subway_filename = urllib.parse.quote('seoul_subway.geojson')
         subway_url = base_url + encoded_subway_filename
         geojson_subway = gpd.read_file(subway_url)
         geojson_subway = geojson_subway.to_crs(epsg=4326)
@@ -287,7 +287,7 @@ if submit_button:
 
         # 지하철 노선 레이어 추가 (NEW)
         folium.GeoJson(
-            seoul_subway,
+            geojson_subway,
             name='서울 지하철 노선',
             style_function=lambda x: {
                 'color': '#8B008B', # Purple color for subway lines
