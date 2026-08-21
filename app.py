@@ -24,7 +24,7 @@ st.set_page_config(
 st.title("🏢 연립다세대·오피스텔 조건별 연도별 임대료 시각화 (Folium)")
 
 # --- GitHub raw content URL 설정 ---
-github_base_url = 'https://raw.githubusercontent.com/urbandhwi/findingmyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
+github_base_url = 'https://raw.githubusercontent.com/urbandhwi/whereismyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
 
 # --- 2. 데이터 로드 함수 정의 ---
 @st.cache_data
