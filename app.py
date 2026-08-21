@@ -24,7 +24,7 @@ st.set_page_config(
 st.title("🏢 연립다세대·오피스텔 조건별 연도별 임대료 시각화 (Folium)")
 
 # --- GitHub raw content URL 설정 ---
-github_base_url = 'https://raw.githubusercontent.com/urbandhwi/whereismyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
+github_base_url = 'https://raw.githubusercontent.com/urbandhwi/findingmyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
 
 # --- 2. 데이터 로드 함수 정의 ---
 @st.cache_data
@@ -60,7 +60,7 @@ def load_data(base_url):
         st.success(f"500m 격자 데이터 로드 완료: {grid_url}")
 
         # GeoJSON 파일 로드 (자치구)
-        encoded_gu_filename = urllib.parse.quote('seoul_gu.geojson') 
+        encoded_gu_filename = urllib.parse.quote('seoul_gu.geojson')
         gu_url = base_url + encoded_gu_filename
         geojson_gu = gpd.read_file(gu_url)
         geojson_gu = geojson_gu.to_crs(epsg=4326) # CRS 통일
@@ -96,7 +96,7 @@ def load_data(base_url):
     except Exception as e:
         st.error(f"데이터 로드 중 오류 발생: {e}")
         st.info("GitHub URL 또는 파일 경로를 확인하거나, 파일이 public repository에 있는지 확인 바랍니다.")
-        return None, None, None, None 
+        return None, None, None, None
 
 try:
     df_raw, geojson_dong, geojson_grid, geojson_gu = load_data(github_base_url)
@@ -108,7 +108,7 @@ except Exception as e:
 st.sidebar.header("🔍 검색 조건 설정")
 
 house_type_selection = st.sidebar.radio("주택 유형", ["전체", "연립다세대", "오피스텔"]) # '전체' 옵션 추가
-spatial_unit = st.sidebar.radio("시각화 단위", ["법정동별", "격자별"]) 
+spatial_unit = st.sidebar.radio("시각화 단위", ["법정동별", "격자별"])
 selected_year = st.sidebar.selectbox("연도", [2023, 2024, 2025])
 
 deposit_options = {
@@ -213,7 +213,7 @@ if submit_button:
             )
             # Drop the redundant SIG_CD column from the merge
             plot_gdf.drop(columns=['SIG_CD'], inplace=True, errors='ignore')
-            
+
             hover_fields = ['EMD_NM', 'SIG_KOR_NM', 'count_거래건수', 'min_환산임대료', 'max_환산임대료', 'median_환산임대료', 'avg_환산임대료']
             hover_aliases = ['법정동명:', '자치구:', '거래건수:', '최저 환산임대료(만원):', '최고 환산임대료(만원):', '중앙 환산임대료(만원):', '평균 환산임대료(만원):']
         else: # 격자별
@@ -234,7 +234,7 @@ if submit_button:
             name=f'{spatial_unit} 평균 환산월세',
             data=plot_gdf.dropna(subset=['avg_환산임대료']), # Data for color mapping
             columns=[group_col, 'avg_환산임대료'], # Key column and value column
-            key_on=group_col, # Column in geo_data to match with data columns key
+            key_on=f'feature.properties.{group_col}', # Column in geo_data to match with data columns key
             fill_color='YlGnBu', # Color scheme
             fill_opacity=0.7,
             line_opacity=0.2,
@@ -248,7 +248,7 @@ if submit_button:
                 sticky=False
             )
         ).add_to(m)
-        
+
         folium.LayerControl().add_to(m)
 
         # Streamlit에 Folium 맵 표시
