@@ -232,10 +232,10 @@ if submit_button:
         folium.Choropleth(
             geo_data=plot_gdf.dropna(subset=['avg_환산임대료']), # GeoDataFrame directly
             name=f'{spatial_unit} 평균 환산월세',
-            data=plot_gdf.dropna(subset=['avg_환산임대료']), # Data for color mapping
+            data=plot_gdf.dropna(subset=['avg_환산임대료']),
             columns=[group_col, 'avg_환산임대료'], # Key column and value column
             key_on=f'feature.properties.{group_col}', # Column in geo_data to match with data columns key
-            fill_color='YlGnBu', # Color scheme
+            fill_color='RdBu_r', # Color scheme: Blue (low) to Red (high) - 'r' reverses the default RdBu
             fill_opacity=0.7,
             line_opacity=0.2,
             legend_name='평균 환산 임대료 (만원)',
@@ -248,6 +248,35 @@ if submit_button:
                 sticky=False
             )
         ).add_to(m)
+
+        # 자치구 경계 오버레이 추가
+        folium.GeoJson(
+            geojson_gu,
+            name='자치구 경계',
+            style_function=lambda x: {
+                'color': 'black',
+                'weight': 1.5,
+                'fillOpacity': 0
+            },
+            tooltip=folium.features.GeoJsonTooltip(
+                fields=['SIG_KOR_NM'],
+                aliases=['자치구명:'],
+                localize=True,
+                sticky=True
+            )
+        ).add_to(m)
+
+        # 자치구 이름 텍스트 마커 추가 (흐리게)
+        for idx, row in geojson_gu.iterrows():
+            centroid = row.geometry.centroid
+            folium.Marker(
+                location=[centroid.y, centroid.x],
+                icon=folium.DivIcon(
+                    icon_size=(150, 36),
+                    icon_anchor=(75, 18),
+                    html=f"<div style=\"font-size: 10pt; color: gray; opacity: 0.7; text-align: center; font-weight: bold;\">{row['SIG_KOR_NM']}</div>"
+                )
+            ).add_to(m)
 
         folium.LayerControl().add_to(m)
 
