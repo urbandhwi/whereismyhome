@@ -287,7 +287,7 @@ if submit_button:
 
         # 지하철 노선 레이어 추가 (NEW)
         folium.GeoJson(
-            geojson_subway,
+            seoul_subway,
             name='서울 지하철 노선',
             style_function=lambda x: {
                 'color': '#8B008B', # Purple color for subway lines
