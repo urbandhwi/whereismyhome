@@ -25,7 +25,7 @@ st.set_page_config(
 st.title("🏢 연립다세대·오피스텔 조건별 연도별 임대료 시각화 (Folium)")
 
 # --- GitHub raw content URL 설정 ---
-github_base_url = 'https://raw.githubusercontent.com/urbandhwi/findingmyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
+github_base_url = 'https://raw.githubusercontent.com/urbandhwi/whereismyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
 
 # --- 2. 데이터 로드 함수 정의 ---
 @st.cache_data
@@ -33,7 +33,7 @@ def load_data(base_url):
     # GitHub에서 파일을 직접 로드합니다.
     try:
         # 최적화된 Parquet 파일 로드
-        encoded_rental_filename = urllib.parse.quote('서울시_전월세거래_통합_위경도_격자포함_optimized_reduced.parquet')
+        encoded_rental_filename = urllib.parse.quote('seoul_rent.parquet')
         rental_data_url = base_url + encoded_rental_filename
         df = pd.read_parquet(rental_data_url)
         st.success(f"전월세 거래 데이터 로드 완료: {rental_data_url}")
