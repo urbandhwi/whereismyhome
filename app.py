@@ -1,3 +1,4 @@
+#지하철 추가버전
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -24,7 +25,7 @@ st.set_page_config(
 st.title("🏢 연립다세대·오피스텔 조건별 연도별 임대료 시각화 (Folium)")
 
 # --- GitHub raw content URL 설정 ---
-github_base_url = 'https://raw.githubusercontent.com/urbandhwi/whereismyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
+github_base_url = 'https://raw.githubusercontent.com/urbandhwi/findingmyhome/main/' # 이곳을 사용자님의 GitHub URL로 변경해주세요!
 
 # --- 2. 데이터 로드 함수 정의 ---
 @st.cache_data
@@ -32,7 +33,7 @@ def load_data(base_url):
     # GitHub에서 파일을 직접 로드합니다.
     try:
         # 최적화된 Parquet 파일 로드
-        encoded_rental_filename = urllib.parse.quote('seoul_rent.parquet')
+        encoded_rental_filename = urllib.parse.quote('서울시_전월세거래_통합_위경도_격자포함_optimized_reduced.parquet')
         rental_data_url = base_url + encoded_rental_filename
         df = pd.read_parquet(rental_data_url)
         st.success(f"전월세 거래 데이터 로드 완료: {rental_data_url}")
@@ -66,6 +67,13 @@ def load_data(base_url):
         geojson_gu = geojson_gu.to_crs(epsg=4326) # CRS 통일
         st.success(f"자치구 경계 데이터 로드 완료: {gu_url}")
 
+        # GeoJSON 파일 로드 (지하철) - NEW
+        encoded_subway_filename = urllib.parse.quote('seoul_subway.geojson')
+        subway_url = base_url + encoded_subway_filename
+        geojson_subway = gpd.read_file(subway_url)
+        geojson_subway = geojson_subway.to_crs(epsg=4326) # CRS 통일
+        st.success(f"지하철 경계 데이터 로드 완료: {subway_url}")
+
         # `seoul_dong.geojson`에는 '법정동코드'가 문자열로 저장되어 있습니다. (Cell zjRgA_OzBjYC 참고)
         # plotly.express의 featureidkey가 `feature.properties.법정동코드`를 사용하려면
         # geojson_dong의 '법정동코드' 컬럼이 있어야 합니다.
@@ -92,14 +100,14 @@ def load_data(base_url):
         else:
             st.warning("geojson_dong에 '자치구코드' 또는 '법정동코드' 컬럼이 없어 unique_map_key를 생성할 수 없습니다.")
 
-        return df, geojson_dong, geojson_grid, geojson_gu
+        return df, geojson_dong, geojson_grid, geojson_gu, geojson_subway # geojson_subway 추가
     except Exception as e:
         st.error(f"데이터 로드 중 오류 발생: {e}")
         st.info("GitHub URL 또는 파일 경로를 확인하거나, 파일이 public repository에 있는지 확인 바랍니다.")
-        return None, None, None, None
+        return None, None, None, None, None # None for geojson_subway 추가
 
 try:
-    df_raw, geojson_dong, geojson_grid, geojson_gu = load_data(github_base_url)
+    df_raw, geojson_dong, geojson_grid, geojson_gu, geojson_subway = load_data(github_base_url)
 except Exception as e:
     st.error(f"데이터 파일 로드 중 오류가 발생했습니다: {e}")
     st.stop()
@@ -277,6 +285,52 @@ if submit_button:
                     html=f"<div style=\"font-size: 10pt; color: gray; opacity: 0.7; text-align: center; font-weight: bold;\">{row['SIG_KOR_NM']}</div>"
                 )
             ).add_to(m)
+
+        # --- 지하철 노선 보기 설정 ---
+        st.subheader("🚉 지하철 노선 보기")
+        if geojson_subway is not None and not geojson_subway.empty:
+            all_hoseon = geojson_subway['호선명'].unique().tolist()
+            selected_hoseon_list = st.multiselect(
+                "표시할 지하철 노선을 선택하세요:",
+                options=all_hoseon,
+                default=[]
+            )
+
+            # 지하철 노선 색상 매핑
+            subway_line_colors = {
+                '1호선': '#003DA5', '2호선': '#009D3E', '3호선': '#EF7C1C', '4호선': '#00A5DE',
+                '5호선': '#996CAC', '6호선': '#CD7C2F', '7호선': '#747F00', '8호선': '#EA545D',
+                '9호선': '#BB8E00', '수인분당선': '#FABE00', '신분당선': '#D4003B', '경의중앙선': '#77C4A3',
+                '경춘선': '#0C9482', '공항철도': '#0070C0', '우이신설선': '#B0CE33', '서해선': '#8FD6D5',
+                '김포골드라인': '#A17800', '에버라인': '#55B098', '의정부경전철': '#B0CE33', '인천1호선': '#7C93C7',
+                '인천2호선': '#F2B134', '신림선': '#6C7EBF'
+            }
+
+            if selected_hoseon_list:
+                st.write(f"선택된 노선: {', '.join(selected_hoseon_list)}")
+                # 선택된 노선에 해당하는 지하철 역 필터링
+                filtered_subway_stations = geojson_subway[geojson_subway['호선명'].isin(selected_hoseon_list)].copy()
+
+                # 지하철 역을 위한 FeatureGroup 생성
+                subway_group = folium.FeatureGroup(name='선택된 지하철 역', show=True)
+
+                for idx, row in filtered_subway_stations.iterrows():
+                    station_name = row['역명']
+                    hoseon_name = row['호선명']
+                    line_color = subway_line_colors.get(hoseon_name, '#000000') # 기본값은 검은색
+
+                    folium.CircleMarker(
+                        location=[row.geometry.y, row.geometry.x],
+                        radius=4, # 마커 크기 조정
+                        color=line_color,
+                        fill=True,
+                        fill_color=line_color,
+                        fill_opacity=0.9,
+                        tooltip=f"<b>{station_name}</b><br>{hoseon_name}"
+                    ).add_to(subway_group)
+                subway_group.add_to(m)
+        else:
+            st.warning("지하철 데이터가 로드되지 않았거나 비어 있습니다.")
 
         folium.LayerControl().add_to(m)
 
