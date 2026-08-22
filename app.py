@@ -289,7 +289,7 @@ if submit_button:
         # --- 지하철 노선 보기 설정 ---
         st.subheader("🚉 지하철 노선 보기")
         if geojson_subway is not None and not geojson_subway.empty:
-            all_hoseon = geojson_subway['호선명'].unique().tolist()
+            all_hoseon = geojson_subway['hoseon'].unique().tolist()
             selected_hoseon_list = st.multiselect(
                 "표시할 지하철 노선을 선택하세요:",
                 options=all_hoseon,
@@ -309,14 +309,14 @@ if submit_button:
             if selected_hoseon_list:
                 st.write(f"선택된 노선: {', '.join(selected_hoseon_list)}")
                 # 선택된 노선에 해당하는 지하철 역 필터링
-                filtered_subway_stations = geojson_subway[geojson_subway['호선명'].isin(selected_hoseon_list)].copy()
+                filtered_subway_stations = geojson_subway[geojson_subway['hoseon'].isin(selected_hoseon_list)].copy()
 
                 # 지하철 역을 위한 FeatureGroup 생성
                 subway_group = folium.FeatureGroup(name='선택된 지하철 역', show=True)
 
                 for idx, row in filtered_subway_stations.iterrows():
-                    station_name = row['역명']
-                    hoseon_name = row['호선명']
+                    station_name = row['SWST_NM']
+                    hoseon_name = row['hoseon']
                     line_color = subway_line_colors.get(hoseon_name, '#000000') # 기본값은 검은색
 
                     folium.CircleMarker(
